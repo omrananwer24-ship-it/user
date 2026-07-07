@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'password');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // -------------------------------------------------------------
+    // 1. Users Configuration & Sessions Collection
+    // -------------------------------------------------------------
+    match /users_config/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId && isValidUserConfig(incoming());
+    }
+
+    function isValidUserConfig(data) {
+      return data.maxDevices is number
+          && data.maxDevices >= 1 && data.maxDevices <= 10
+          && data.activeSessions is map
+          && data.lastLoginEmail is string && data.lastLoginEmail.size() <= 100
+          && data.lastUpdated is number;
+    }
+
+    // -------------------------------------------------------------
+    // 2. Orders Collection
+    // -------------------------------------------------------------
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      
+      allow create: if isVerifiedUser() 
+                    && isValidId(orderId)
+                    && incoming().ownerId == request.auth.uid
+                    && isValidOrder(incoming());
+                    
+      allow update: if isVerifiedUser()
+                    && existing().ownerId == request.auth.uid
+                    && incoming().ownerId == request.auth.uid
+                    && isValidOrder(incoming())
+                    && (
+                      // Action: Toggle Status
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['status'])) ||
+                      // Action: Edit Code/Price
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['code', 'price']))
+                    );
+                    
+      allow delete: if isVerifiedUser()
+                    && existing().ownerId == request.auth.uid;
+    }
+
+    function isValidOrder(data) {
+      return data.id is string && data.id.size() <= 128
+          && data.ownerId is string && data.ownerId == request.auth.uid
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+          && data.phone is string && data.phone.size() > 0 && data.phone.size() <= 30
+          && (!data.keys().hasAll(['address']) || (data.address is string && data.address.size() <= 300))
+          && data.code is string && data.code.size() > 0 && data.code.size() <= 200
+          && data.status is string && (data.status == 'pending' || data.status == 'arrived')
+          && data.createdAt is string && data.createdAt.size() <= 50
+          && data.price is number && data.price >= 0 && data.price <= 1000000;
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Shein Order Tracker",
+  "description": "A modern Kurdish RTL application for tracking and managing Shein customer orders, searching codes, and organizing statuses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

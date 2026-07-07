@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "Shein customer order details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the order" },
+        "ownerId": { "type": "string", "description": "UID of the user who owns this order" },
+        "name": { "type": "string", "description": "Customer name" },
+        "phone": { "type": "string", "description": "Customer phone number" },
+        "address": { "type": "string", "description": "Optional customer address" },
+        "code": { "type": "string", "description": "Shein SKU code or url" },
+        "status": { "type": "string", "enum": ["pending", "arrived"], "description": "Order status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "price": { "type": "number", "description": "Price of the item" }
+      },
+      "required": ["id", "ownerId", "name", "phone", "code", "status", "createdAt", "price"]
+    },
+    "UserConfig": {
+      "title": "UserConfig",
+      "description": "User specific application configurations and active sessions",
+      "type": "object",
+      "properties": {
+        "maxDevices": { "type": "number", "description": "Maximum allowed device sessions" },
+        "activeSessions": { "type": "object", "description": "Map of active session IDs to timestamps" },
+        "lastLoginEmail": { "type": "string", "description": "Email address used at last login" },
+        "lastUpdated": { "type": "number", "description": "Timestamp when this config was last updated" }
+      },
+      "required": ["maxDevices", "activeSessions", "lastLoginEmail", "lastUpdated"]
+    }
+  },
+  "firestore": {
+    "users_config/{userId}": {
+      "schema": "UserConfig",
+      "description": "Device limit configurations and active sessions per user"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Shein customer orders"
+    }
+  }
+}
